@@ -514,7 +514,7 @@ Web-проекты должны иметь возможность отправл
 
 Чтобы это стало возможным нужно внутри контейнеров так же внести соответствующие записи в файл **/etc/hosts**.
 
-Самый простой способ решить данную задачу — добавить секцию **extra_hosts** в описание сервисов **php-7.1** и **php-7.3** в **docker-compose.yml**.
+Самый простой способ решить данную задачу — добавить секцию **extra_hosts** в описание сервисов **php-8.1** и **php-7.4** в **docker-compose.yml**.
 
 Пример:
 
@@ -547,7 +547,7 @@ PING docker.for.mac.localhost (192.168.65.2): 56 data bytes
 64 bytes from 192.168.65.2: seq=2 ttl=37 time=0.801 ms
 ```
  
-После того, как вам станет известен IP-адрес, укажите его в секции **extra_hosts** в описание сервисов **php-7.1** **php-7.3** в **docker-compose.yml**.
+После того, как вам станет известен IP-адрес, укажите его в секции **extra_hosts** в описание сервисов **php-8.1** **php-7.4** в **docker-compose.yml**.
   
 ```
   ...  
@@ -632,8 +632,8 @@ docker ps
   
 ```
 CONTAINER ID        IMAGE                          COMMAND                  CREATED             STATUS              PORTS                               NAMES
-8d348959c475        workspace_php-8.1              "docker-php-entrypoi…"   6 minuts ago        Up 54 seconds       0.0.0.0:9001->9000/tcp              php-7.1
-a93399727ff6        workspace_php-7.4              "docker-php-entrypoi…"   6 minuts ago        Up 53 seconds       0.0.0.0:9003->9000/tcp              php-7.3
+8d348959c475        workspace_php-8.1              "docker-php-entrypoi…"   6 minuts ago        Up 54 seconds       0.0.0.0:9001->9000/tcp              php-8.1
+a93399727ff6        workspace_php-7.4              "docker-php-entrypoi…"   6 minuts ago        Up 53 seconds       0.0.0.0:9003->9000/tcp              php-7.4
 5cd80ac95388        nginx:stable-alpine            "/docker-entrypoint.…"   6 minuts ago        Up 51 seconds       0.0.0.0:80->80/tcp                  nginx
 70182bc9e44c        mysql:5.7                      "docker-entrypoint.s…"   6 minuts ago        Up 54 seconds       33060/tcp, 0.0.0.0:4307->3306/tcp   mysql-5.7
 46f2766ec0b9        mysql:8.0.21                   "docker-entrypoint.s…"   6 minuts ago        Up 53 seconds       33060/tcp, 0.0.0.0:4308->3306/tcp   mysql-8
@@ -704,7 +704,7 @@ docker inspect container_name
 
 **container_name** — имя контейнера.
 
-### Как узнать какие расширения PHP установлены в контейнере php-7.3?
+### Как узнать какие расширения PHP установлены в контейнере php-7.4?
 
 Если контейнер **php-7.4** запущен, то выполните команду:
 
