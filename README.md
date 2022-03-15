@@ -1,7 +1,5 @@
 # Среда разработки PHP на базе Docker
 
-Публикация на **Habr**: https://habr.com/ru/post/519500/.
-
 - [Требования](#Требования)
 - [Возможности](#Возможности-и-особенности)
 - [Структура проекта](#Структура-проекта)
@@ -17,7 +15,7 @@
 
 ## Возможности и особенности
 
-- Несколько версий **PHP** — **7.3**, **7.1** и **8.0** с набором наиболее востребованных расширений. 
+- Несколько версий **PHP** — **8.1**, **7.4** и **5.6** с набором наиболее востребованных расширений. 
 - Возможность использовать для web-проектов разные версии **PHP**.
 - Готовый к работе монитор процессов **Supervisor**.
 - Предварительно сконфигурированный веб-сервер **Nginx**.
@@ -25,7 +23,8 @@
   - **MySQL 5.7**.
   - **MySQL 8**.
   - **PostgreSQL** (latest).
-  - **MongoDB 4.2**.
+  - **MongoDB 4.2**.c
+  - **MariaDB 10.5.9**
   - **Redis** (latest).
 - Настройка основных параметров окружения через файл **.env**.
 - Возможность модификации сервисов через **docker-compose.yml**.
@@ -49,11 +48,11 @@
 ├── mongo
 ├── mysql-5.7
 ├── mysql-8
+├── mariadb
 ├── nginx
 ├── php-ini
 ├── php-workers
-├── php-7-workspace
-├── php-8-workspace
+├── php-workspace
 ├── postgres
 ├── projects
 └── redis
@@ -71,7 +70,7 @@
 
 ```dotenv
 # Временная зона
-WORKSPACE_TIMEZONE='Europe/Moscow'
+WORKSPACE_TIMEZONE=Europe/Moscow
 
 # XDEBUG
 DOCKER_PHP_ENABLE_XDEBUG='on'
@@ -79,7 +78,8 @@ DOCKER_PHP_ENABLE_XDEBUG='on'
 # Настройки Nginx
 # Порт, который следует использовать
 # для соединения с локального компьютера
-NGINX_PORT=80
+NGINX_PORT_443=443
+NGINX_PORT_80=80
 
 # Настройки Redis
 # Порт, который следует использовать
@@ -92,7 +92,7 @@ POSTGRES_USER=pg_user
 POSTGRES_PASSWORD=secret
 POSTGRES_PORT=54322
 
-# Настройки общие для MySQL 8.x и MySQL 5.7.x
+# Настройки общие для MARIADB, MySQL 8.x и MySQL 5.7.x
 MYSQL_ROOT_PASSWORD=secret
 MYSQL_DATABASE=test
 
@@ -106,22 +106,27 @@ MYSQL_8_PORT=4308
 # для соединения с локального компьютера
 MYSQL_5_7_PORT=4307
 
+# Настройки MARIADB
+# Порт, который следует использовать
+# для соединения с локального компьютера
+MARIADB_PORT=4309
+
 # Настройки MongoDB
 # Порт, который следует использовать
 # для соединения с локального компьютера
 MONGO_PORT=27017
 
-# Настройки PHP 8.0
+# Настройки PHP 7.4
 # Внешний порт, доступен с локального компьютера
-PHP_8_0_PORT=9006
+PHP_7_4_PORT=9003
 
-# Настройки PHP 7.3
+# Настройки PHP 5.6
 # Внешний порт, доступен с локального компьютера
-PHP_7_3_PORT=9003
+PHP_5_6_PORT=9001
 
-# Настройки PHP 7.1
+# Настройки PHP 8.1
 # Внешний порт, доступен с локального компьютера
-PHP_7_1_PORT=9001
+PHP_8_1_PORT=9005
 ```
 
 ### .gitignore
@@ -232,7 +237,7 @@ server {
     location ~ \.php$ {
         try_files $uri =404;
         fastcgi_split_path_info ^(.+\.php)(/.+)$;
-        fastcgi_pass php-7.3:9000;
+        fastcgi_pass php-8.1:9000;
         fastcgi_index index.php;
         include fastcgi_params;
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
@@ -255,11 +260,69 @@ server {
     location ~ \.php$ {
         try_files $uri =404;
         fastcgi_split_path_info ^(.+\.php)(/.+)$;
-        fastcgi_pass php-7.1:9000;
+        fastcgi_pass php-7.4:9000;
         fastcgi_index index.php;
         include fastcgi_params;
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
         fastcgi_param PATH_INFO $fastcgi_script_name;
+    }
+}
+```
+или для https
+```nginx
+server {
+    listen      80;
+    listen [::]:80;
+    server_name project-1.localhost;
+
+    location / {
+        rewrite ^ https://$host$request_uri? permanent;
+    }
+}
+
+server {
+    listen      443  ssl http2;
+    listen [::]:443  ssl http2;
+
+    index index.php index.html;
+    server_name project-1.localhost;
+
+    error_log /var/log/nginx/project-1.localhost.error.log;
+    access_log /var/log/nginx/project-1.localhost.access.log combined if=$loggable;
+
+    root /var/www/project-1.localhost/public;
+
+    send_timeout 60;
+    keepalive_timeout 60;
+
+    add_header  Strict-Transport-Security "max-age=31536000" always;
+
+    ssl_certificate /certificate/project-1.localhost.pem;
+    ssl_certificate_key /certificate/project-1.localhost.pem;
+
+    ssl_session_timeout 1d;
+    ssl_session_cache shared:SSL:50m;
+    ssl_session_tickets off;
+
+    ssl_protocols TLSv1.1 TLSv1.2;
+    ssl_ciphers 'ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-DSS-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-DSS-AES256-SHA:DHE-RSA-AES256-SHA:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!3DES:!MD5:!PSK';
+    ssl_prefer_server_ciphers on;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        try_files $uri =404;
+        fastcgi_split_path_info ^(.+\.php)(/.+)$;
+        fastcgi_pass php-8.1:9000;
+        fastcgi_index index.php;
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_param PATH_INFO $fastcgi_script_name;
+        fastcgi_param HTTPS on; # Для php-fpm
+        fastcgi_send_timeout 30m;
+        fastcgi_read_timeout 30m;
     }
 }
 ```
@@ -271,19 +334,19 @@ server {
 Например, для проекта **project-1.localhost** указано:
 
 ```nginx
-fastcgi_pass php-7.3:9000;
+fastcgi_pass php-8.1:9000;
 ```
 
-**php-7.3** — название docker-контейнера, а **9000** — порт внутренней сети. Контейнеры между собой связаны через внутреннюю сеть, которая определена в файле **docker-compose.yml**.  
+**php-8.1** — название docker-контейнера, а **9000** — порт внутренней сети. Контейнеры между собой связаны через внутреннюю сеть, которая определена в файле **docker-compose.yml**.  
   
 ### php-ini
 
 В этом каталоге находятся файлы конфигурации PHP.
 
 ```
-├── 7.1
+├── 8.1
 │   └── php.ini
-└── 7.3
+└── 7.4
     └── php.ini
 ```
 Для каждой версии PHP — свой файл конфигурации.
@@ -294,16 +357,16 @@ fastcgi_pass php-7.3:9000;
 Место для хранения файлов конфигурации **Supervisor**.
 
 ```
-├── 7.1
+├── 8.1
 │   └── supervisor.d
 │       
-└── 7.3
+└── 7.4
     └── supervisor.d
 ```
 
 Для каждой версии PHP — могут быть добавлены свои файлы с настройками. 
 
-### php-n-workspace
+### php-workspace
 
 Здесь хранится файл, в котором описаны действия, выполняемые при создании образов docker-контейнеров PHP.
 
@@ -341,9 +404,9 @@ project-2.ru
 ...
 ```
 
-Содержимое каталога **projects** доступно из контейнеров **php-7.1** и **php-7.3**. 
+Содержимое каталога **projects** доступно из контейнеров **php-8.1** и **php-7.4**. 
 
-Если зайти в контейнер **php-7.1** или **php-7.3**, то в каталоге **/var/www** будут доступны проекты, которые расположены в **projects** на локальной машине.
+Если зайти в контейнер **php-8.1** или **php-7.4**, то в каталоге **/var/www** будут доступны проекты, которые расположены в **projects** на локальной машине.
 
 ### redis
 
@@ -361,7 +424,7 @@ project-2.ru
 
 ## Программы в docker-контейнерах PHP
 
-Полный перечень приложений, которые установлены в контейнерах **php-x.x** можно посмотреть в **php-n-workspace/Dockerfile**.
+Полный перечень приложений, которые установлены в контейнерах **php-x.x** можно посмотреть в **php-workspace/Dockerfile**.
 
 Здесь перечислим лишь некоторые, наиболее важные:
 
@@ -384,7 +447,7 @@ project-2.ru
 **1**. Выполните клонирование данного репозитория в любое место на вашем компьютере. 
 
 ```shell script
-git clone https://github.com/drandin/docker-php-workspace
+git clone https://github.com/len1in/docker-php-workspace
 ```
 
 Перейдите в директорию, в которую вы клонировали репозиторий. Все дальнейшие команды следует выполнять именно в этой директории.
@@ -414,7 +477,7 @@ project-1.ru
 project-2.ru
 ```
 
-**project-1.ru** — будет работать на версии PHP 7.3, **project-2.ru** - на PHP 7.1, а **project-3.ru** - на PHP 8.0.
+**project-1.ru** — будет работать на версии PHP 8.1, а **project-2.ru** - на PHP 7.4.
 
 **4**. Отредактируйте настройки виртуальных хостов **Nginx**.
 
@@ -447,7 +510,7 @@ project-2.ru
 
 Web-проекты должны иметь возможность отправлять http-запросы друг другу и использовать для этого название хостов. 
 
-Из одного запущенного docker-контейнера **php-7.1** web-приложение №1 должно иметь возможность отправить запрос к другому web-приложению №2, которое работает внутри docker-контейнера **php-7.3**. При этом адресом запроса может быть название хоста, которое указано в файле **/etc/hosts** локального компьютера. 
+Из одного запущенного docker-контейнера **php-7.4** web-приложение №1 должно иметь возможность отправить запрос к другому web-приложению №2, которое работает внутри docker-контейнера **php-8.1**. При этом адресом запроса может быть название хоста, которое указано в файле **/etc/hosts** локального компьютера. 
 
 Чтобы это стало возможным нужно внутри контейнеров так же внести соответствующие записи в файл **/etc/hosts**.
 
@@ -457,12 +520,11 @@ Web-проекты должны иметь возможность отправл
 
 ```
   ...  
-  php-7.1:  
+  php-8.1:  
   ...
     extra_hosts:
       - 'project-1.localhost:IP_HOST_MACHINE'
       - 'project-2.localhost:IP_HOST_MACHINE'
-      - 'project-3.localhost:IP_HOST_MACHINE'
   ...
 ```
 
@@ -489,7 +551,7 @@ PING docker.for.mac.localhost (192.168.65.2): 56 data bytes
   
 ```
   ...  
-  php-7.1:  
+  php-8.1:  
   ...
     extra_hosts:
       - 'project-1.localhost:192.168.65.2'
@@ -512,6 +574,7 @@ PING docker.for.mac.localhost (192.168.65.2): 56 data bytes
 | PostgreSQL | postgres       | 5432  |
 | MongoDB    | mongo          | 27017 |
 | Redis      | redis          | 6379  |
+| MariaBD    | mariadb        | 3306  |
 
 Именно эти параметры следует использовать для конфигурации web-проектов. 
 
@@ -569,9 +632,8 @@ docker ps
   
 ```
 CONTAINER ID        IMAGE                          COMMAND                  CREATED             STATUS              PORTS                               NAMES
-8d348959c475        docker-php-workspace_php-7.1   "docker-php-entrypoi…"   6 minuts ago        Up 54 seconds       0.0.0.0:9001->9000/tcp              php-7.1
-a93399727ff6        docker-php-workspace_php-7.3   "docker-php-entrypoi…"   6 minuts ago        Up 53 seconds       0.0.0.0:9003->9000/tcp              php-7.3
-7d879f796fdc        docker-php-workspace_php-8.0   "docker-php-entrypoi…"   6 minuts ago        Up 52 seconds
+8d348959c475        workspace_php-8.1              "docker-php-entrypoi…"   6 minuts ago        Up 54 seconds       0.0.0.0:9001->9000/tcp              php-7.1
+a93399727ff6        workspace_php-7.4              "docker-php-entrypoi…"   6 minuts ago        Up 53 seconds       0.0.0.0:9003->9000/tcp              php-7.3
 5cd80ac95388        nginx:stable-alpine            "/docker-entrypoint.…"   6 minuts ago        Up 51 seconds       0.0.0.0:80->80/tcp                  nginx
 70182bc9e44c        mysql:5.7                      "docker-entrypoint.s…"   6 minuts ago        Up 54 seconds       33060/tcp, 0.0.0.0:4307->3306/tcp   mysql-5.7
 46f2766ec0b9        mysql:8.0.21                   "docker-entrypoint.s…"   6 minuts ago        Up 53 seconds       33060/tcp, 0.0.0.0:4308->3306/tcp   mysql-8
@@ -586,24 +648,18 @@ bba24e86778a        redis:latest                   "docker-entrypoint.s…"   6 
 
 Если для работы web-приложений необходимо установить зависимости, например через менеджер пакетов **Composer** или **NPM**, то сейчас самое время сделать это.
 
-В контейнерах **php-7.1**, **php-7.3** и **php-8.0** уже установлен и **Composer** и **NPM**.
+В контейнерах **php-8.1** и **php-7.4** уже установлен и **Composer** и **NPM**.
 
-Войдите в контейнер **php-7.1**:
+Войдите в контейнер **php-8.1**:
 
 ```shell script
-docker exec -it php-7.1 bash  
+docker exec -it php-8.1 bash  
 ```
 
 или
 
 ```shell script
-docker exec -it php-7.3 bash  
-```
-
-или
-
-```shell script
-docker exec -it php-8.0 bash  
+docker exec -it php-7.4 bash  
 ```
 
 Перейдите в рабочий каталог необходимого web-проекта и выполните требуемые действия.
@@ -650,10 +706,10 @@ docker inspect container_name
 
 ### Как узнать какие расширения PHP установлены в контейнере php-7.3?
 
-Если контейнер **php-8.0** запущен, то выполните команду:
+Если контейнер **php-7.4** запущен, то выполните команду:
 
 ```shell script
-docker exec -it php-8.0 php -m
+docker exec -it php-7.4 php -m
 ```
 
 ### Как удалить все контейнеры?

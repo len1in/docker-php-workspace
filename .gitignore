@@ -4,8 +4,14 @@
 /mongo/dump/**
 /mysql-8/data/**
 !/mysql-8/data/.gitkeep
+/mariadb/data/**
+!/mariadb/data/.gitkeep
+/mariadb/backup/**
+!/mariadb/backup/.gitkeep
 /mysql-5.7/data/**
 !/mysql-5.7/data/.gitkeep
+/mariadb/dump/**
+!/mariadb/dump/.gitkeep
 /mysql-8/dump/**
 !/mysql-8/dump/.gitkeep
 /mysql-5.7/dump/**
@@ -17,6 +23,8 @@
 !/postgres/dump/.gitkeep
 /.ssh/**
 !/.ssh/.gitkeep
+/certificate/**
+!/certificate/.gitkeep
 /redis/data/**
 !/redis/data/.gitkeep
 /nginx/logs/**
